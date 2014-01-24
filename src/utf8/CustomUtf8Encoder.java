@@ -89,6 +89,11 @@ public class CustomUtf8Encoder {
 			long dp, long dl) {
 		lastSp = spCurr;
 		long dlASCII = dp + Math.min(sl - lastSp, dl - dp);
+		
+		//We need to store a 2-byte length before the actual payload
+		final long lenPosition = dp;
+		dp += 2;
+		
 		// handle ascii encoded strings in an optimised loop
 		while (dp < dlASCII && sa[lastSp] < 128)
 			// TODO: could arguably skip this utility and compute the target
@@ -139,11 +144,16 @@ public class CustomUtf8Encoder {
 			++lastSp;
 		}
 		lastDp = dp;
+		
+		final int utflen = (int)(dp - lenPosition - 2);
+		UNSAFE.putByte(lenPosition,     (byte) ((utflen >>> 8) & 0xFF));
+		UNSAFE.putByte(lenPosition + 1, (byte) ((utflen >>> 0) & 0xFF));
+		
 		return CoderResult.UNDERFLOW;
 	}
 
 	public CoderResult encodeStringToHeap(String src, ByteBuffer dst) {
-		int lastDp = 0;
+		lastDp = 0;
 		int arrayOffset = dst.arrayOffset();
 		int dp = arrayOffset + dst.position();
 		int dl = arrayOffset + dst.limit();
@@ -166,6 +176,11 @@ public class CustomUtf8Encoder {
 	        int dp, int dl) {
 		lastSp = spCurr;
 		int dlASCII = dp + Math.min(sl - lastSp, dl - dp);
+		
+		//We need to store a 2-byte length before the actual payload
+		final long lenPosition = dp;
+		dp += 2;
+		
 		// handle ascii encoded strings in an optimised loop
 		while (dp < dlASCII && sa[lastSp] < 128)
 			da[dp++] = (byte) sa[lastSp++];
@@ -201,6 +216,11 @@ public class CustomUtf8Encoder {
 			++lastSp;
 		}
 		lastDp = dp;
+		
+		final int utflen = dp - lenPosition - 2;
+		da[lenPosition]     = (byte) ((utflen >>> 8) & 0xFF);
+		da[lenPosition + 1] = (byte) ((utflen >>> 0) & 0xFF);
+		
 		return CoderResult.UNDERFLOW;
 	}
 }
